@@ -1,16 +1,15 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from dotenv import load_dotenv
+import tekore as tk
 
-# Clase para manejar la configuración de la aplicación
-class Settings(BaseSettings):
-    SPOTIPY_CLIENT_ID: str  # ID del cliente de Spotify
-    SPOTIPY_CLIENT_SECRET: str  # Secreto del cliente de Spotify
-    PORT: int = 8000  # Puerto por defecto para la aplicación
+load_dotenv() 
 
-    # Configuración del modelo para cargar variables desde un archivo .env
-    model_config = SettingsConfigDict(
-        env_file=".env",  # Archivo de entorno
-        extra="ignore"    # Ignora variables no listadas en el modelo
-    )
+client_id = "35d1b955706e49e1840dc314a179780a"
+client_secret = "ad3d52b0129443ce98cbfcd294288874"
 
-# Instancia de configuración
-settings = Settings()
+print("✅ client_id:", client_id)
+print("✅ client_secret:", "OK" if client_secret else "❌ NO SETEADO")
+
+cred = tk.Credentials(client_id, client_secret)
+token = cred.request_client_token()
+spotify = tk.Spotify(token)
