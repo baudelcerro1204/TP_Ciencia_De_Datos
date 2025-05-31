@@ -16,7 +16,7 @@ def recommend_genre(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/list", summary="Listar géneros disponibles")
+@router.get("/list", summary="Obtener géneros únicos del dataset")
 def list_genres(request: Request):
     recommender = request.app.state.recommender
     return recommender.list_genres()

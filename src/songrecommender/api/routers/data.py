@@ -42,7 +42,7 @@ def get_all_songs():
             raise HTTPException(status_code=404, detail=f"Archivo procesado no encontrado en: {processed_file}")
 
         df = pd.read_parquet(processed_file)
-        songs = df[['track_id', 'name', 'artist', 'genre', 'year']].drop_duplicates().to_dict(orient="records")
+        songs = df[['track_id', 'name', 'artist', 'genre']].drop_duplicates().to_dict(orient="records")
         return JSONResponse(content=songs)
 
     except Exception as e:

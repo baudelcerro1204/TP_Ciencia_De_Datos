@@ -22,6 +22,6 @@ async def startup_event():
 
 # Registramos los routers
 app.include_router(track_router, prefix="/recommend", tags=["Tracks"])
-app.include_router(genre_router, prefix="/recommend/genre", tags=["Genres"])
+app.include_router(genre_router, prefix="/genre", tags=["Genres"])
 app.include_router(data_router, prefix="/data", tags=["Data Processing"])
 
