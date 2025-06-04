@@ -27,18 +27,23 @@ async def recommend_by_features(
     k: int = Query(5, description="Cantidad de recomendaciones")
 ):
     try:
+        logger.info(f"📩 POST /track/features recibido con k={k}")
         recommender = request.app.state.recommender
 
         features_dict = features.dict()
+        logger.debug(f"📦 Payload recibido: {features_dict}")
 
-        # Convertir duración minutos a milisegundos y guardar en 'duration_ms'
+        # Convertir duración a ms
         features_dict['duration_ms'] = int(features_dict['duration'] * 60 * 1000)
         del features_dict['duration']
+        logger.debug(f"⏱️ Duración convertida a ms: {features_dict['duration_ms']}")
 
-        # Usar solo las keys del numeric_features
+        # Filtrar solo las features numéricas usadas por el modelo
         filtered_features = {k: features_dict[k] for k in recommender.numeric_features if k in features_dict}
+        logger.debug(f"🎯 Features filtradas usadas por modelo: {filtered_features}")
 
         results = recommender.recommend_by_features(features=filtered_features, n_recommendations=k)
+        logger.info(f"✅ {len(results)} recomendaciones generadas con éxito")
         return results.to_dict(orient="records")
 
     except Exception as e:
@@ -54,11 +59,13 @@ def recommend_by_track(
     k: int = Query(5)
 ):
     try:
+        logger.info(f"🎧 GET /track recibido con artista='{artist}', track='{track}', k={k}")
         recommender = request.app.state.recommender
+
         results = recommender.recommend_songs(track_name=track, artist_name=artist, n_recommendations=k)
+        logger.info(f"✅ {len(results)} canciones recomendadas para '{track}' de '{artist}'")
         return results.to_dict(orient="records")
+
     except Exception as e:
         logger.error(f"❌ Error al recomendar: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-

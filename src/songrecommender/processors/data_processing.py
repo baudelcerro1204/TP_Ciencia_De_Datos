@@ -54,20 +54,16 @@ class MillionSongDataProcessor:
         return combined
 
     def clean_unused_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Columnas a eliminar porque no sirven para la comparación
-        cols_to_drop = [
-            'valence', 'tempo', 'playcount', 'year', 'days_since_release',
-            'mode', 'key', 'time_signature',
-            'rhythm_mfcc_1', 'rhythm_mfcc_2', 'bit_rate'
+        # Features que vas a conservar
+        features_to_keep = [
+            'track_id', 'name', 'artist', 'genre',
+            'duration_ms', 'danceability', 'energy',
+            'loudness', 'speechiness', 'valence', 'tempo'
         ]
-        # Solo eliminar si existen en el df para evitar error
-        cols_existing = [col for col in cols_to_drop if col in df.columns]
-        if cols_existing:
-            print(f"🗑 Eliminando columnas no útiles para comparación: {cols_existing}")
-            df = df.drop(columns=cols_existing)
-        else:
-            print("ℹ️ No se encontraron columnas no útiles para eliminar.")
+        df = df[[col for col in df.columns if col in features_to_keep]]
+        print(f"🧹 Dataset reducido a features relevantes: {df.columns.tolist()}")
         return df
+
 
     def save_processed_data(self, df: pd.DataFrame) -> Path:
         df.to_parquet(self.processed_file, index=False)

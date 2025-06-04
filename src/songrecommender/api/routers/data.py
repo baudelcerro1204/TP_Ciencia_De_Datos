@@ -4,7 +4,10 @@ from songrecommender.processors.data_processing import MillionSongDataProcessor
 from fastapi.responses import JSONResponse
 import pandas as pd
 from pathlib import Path
-
+import shutil
+from fastapi import File, UploadFile
+from tempfile import NamedTemporaryFile
+from songrecommender.processors.audio_features import extract_features_from_mp3
 router = APIRouter()
 
 @router.post("/process", summary="Procesar todos los datos brutos")
@@ -44,6 +47,32 @@ def get_all_songs():
         df = pd.read_parquet(processed_file)
         songs = df[['track_id', 'name', 'artist', 'genre']].drop_duplicates().to_dict(orient="records")
         return JSONResponse(content=songs)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/upload", summary="Subir MP3, extraer features y agregar al dataset")
+async def upload_and_extract(file: UploadFile = File(...)):
+    try:
+        # Guardar el archivo temporalmente
+        with NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            tmp_path = tmp.name
+
+        # Extraer features con Essentia
+        print(f"🎧 Procesando archivo: {file.filename}")
+        new_row = extract_features_from_mp3(tmp_path, original_filename=file.filename)
+
+        # Cargar dataset existente
+        project_root = Path(__file__).resolve().parents[4]
+        parquet_path = project_root / "data" / "processed" / "million_song_combined.parquet"
+        df = pd.read_parquet(parquet_path)
+
+        # Agregar nueva fila al dataset
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_parquet(parquet_path, index=False)
+
+        return {"message": f"✅ {file.filename} agregado al dataset", "song": new_row}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

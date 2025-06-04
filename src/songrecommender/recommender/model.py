@@ -17,38 +17,34 @@ class SongRecommender:
         pca_n_components: float = 0.9,
         exclude_same_artist: bool = True,
     ):
-        logger.info("Inicializando SongRecommender...")
+        logger.info("🟦 Inicializando SongRecommender...")
 
         project_root = Path(__file__).resolve().parents[3]
         default_path = project_root / 'data' / 'processed' / 'million_song_combined.parquet'
         self.data_path = Path(data_path) if data_path else default_path
 
+        logger.debug(f"📁 Ruta del archivo parquet: {self.data_path}")
         if not self.data_path.exists():
             raise FileNotFoundError(f"❌ No se encontró el parquet en: {self.data_path}")
 
         logger.info(f"📦 Cargando datos desde: {self.data_path}")
         self.df = pd.read_parquet(self.data_path)
 
-        # Eliminar duplicados por artista + nombre de canción
-        before = len(self.df)
+        logger.debug(f"📊 Dataset cargado con {len(self.df)} canciones (antes de eliminar duplicados)")
         self.df = self.df.drop_duplicates(subset=["artist", "name"])
-        after = len(self.df)
-        logger.info(f"🧹 Eliminados {before - after} duplicados. Quedan {after} canciones únicas.")
+        logger.debug(f"🎯 Dataset limpio con {len(self.df)} canciones únicas")
 
         self.exclude_same_artist = exclude_same_artist
 
-        # Solo estas 8 columnas numéricas para recomendación
         self.numeric_features = [
-            'duration_ms', 'danceability', 'energy', 'loudness',
-            'speechiness', 'acousticness', 'instrumentalness', 'liveness'
+            'duration_ms', 'danceability', 'energy', 'loudness', 'speechiness', 'tempo'
         ]
 
-        # Validar que existan todas las columnas necesarias
         missing_cols = [f for f in self.numeric_features if f not in self.df.columns]
         if missing_cols:
             raise KeyError(f"❌ Faltan features en DataFrame: {missing_cols}")
+        logger.info("✅ Todas las columnas necesarias están presentes.")
 
-        # Dataset para entrenamiento (solo 8 cols, rellena NaN con 0)
         X = self.df[self.numeric_features].fillna(0)
 
         self.use_pca = use_pca
@@ -61,32 +57,33 @@ class SongRecommender:
         self.scaler = StandardScaler()
         X_scaled = self.scaler.fit_transform(X)
 
+        logger.debug("🔍 Entrenando modelo NearestNeighbors")
         self.model = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine')
         self.model.fit(X_scaled)
-        logger.info("✅ Modelo KNN entrenado")
+        logger.info("✅ Modelo KNN entrenado con éxito.")
 
     def _create_vector_from_features(self, features: dict):
-        # Crea vector con solo las 8 features numéricas en orden
         row = [features.get(f, 0) for f in self.numeric_features]
-
-        logger.debug(f"🎯 Vector de entrada: {row}")
+        logger.debug(f"🎯 Vector numérico de entrada: {row}")
 
         if self.use_pca:
             full_vector = self.pca.transform([row])
         else:
             full_vector = [row]
 
-        return self.scaler.transform(full_vector)
+        transformed = self.scaler.transform(full_vector)
+        logger.debug(f"📏 Vector escalado final: {transformed.tolist()}")
+        return transformed
 
     def recommend_by_features(self, features: dict, n_recommendations: int = 5) -> pd.DataFrame:
-        # Prepara vector entrada
+        logger.info(f"🔎 Recomendando por features con top-{n_recommendations}")
         input_vec = self._create_vector_from_features(features)
 
-        # Busca vecinos
         dists, inds = self.model.kneighbors(input_vec, n_neighbors=n_recommendations)
+        logger.debug(f"🔍 Vecinos encontrados (índices): {inds}")
+        logger.debug(f"📐 Distancias: {dists}")
 
         recs = self.df.iloc[inds[0]].copy()
-
         cols = ['artist', 'name', 'genre'] + self.numeric_features
 
         if recs.empty:
@@ -96,26 +93,41 @@ class SongRecommender:
         return recs[cols]
 
     def recommend_songs(self, track_name: str, artist_name: str, n_recommendations: int = 5) -> pd.DataFrame:
-        # Busca canción en dataset
+        logger.info(f"🔎 Buscando canción: '{track_name}' de '{artist_name}'")
+
+        track_name_norm = track_name.lower().strip()
+        artist_name_norm = artist_name.lower().strip()
+        logger.debug(f"🧪 Normalizados: artista='{artist_name_norm}', canción='{track_name_norm}'")
+
         mask = (
-            self.df['artist'].str.lower() == artist_name.lower().strip()
+            self.df['artist'].str.lower().str.strip() == artist_name_norm
         ) & (
-            self.df['name'].str.lower() == track_name.lower().strip()
+            self.df['name'].str.lower().str.strip() == track_name_norm
         )
 
-        if not mask.any():
+        matches = self.df[mask]
+        logger.debug(f"🔍 Matches encontrados: {len(matches)}")
+
+        if matches.empty:
+            logger.error(f"❌ No se encontró en dataset: {artist_name_norm} - {track_name_norm}")
             raise ValueError(f"No se encontró en dataset: {artist_name} - {track_name}")
 
-        idx = self.df[mask].index[0]
-        # Crea vector desde fila del df
+        idx = matches.index[0]
+        logger.info(f"🎯 Índice del track encontrado: {idx}")
+
         row_features = self.df.loc[idx, self.numeric_features].fillna(0).to_dict()
+        logger.debug(f"📋 Features del track seleccionado: {row_features}")
+
         input_vec = self._create_vector_from_features(row_features)
 
-        # Busca vecinos, saltando el mismo track
         dists, inds = self.model.kneighbors(input_vec, n_neighbors=n_recommendations + 1)
+        logger.debug(f"🔁 Vecinos calculados (incluye mismo track): {inds[0].tolist()}")
+
         inds_filtered = [i for i in inds[0] if i != idx][:n_recommendations]
+        logger.debug(f"✅ Vecinos filtrados (sin el track mismo): {inds_filtered}")
 
         recs = self.df.iloc[inds_filtered].copy()
-
         cols = ['artist', 'name', 'genre'] + self.numeric_features
+
+        logger.info(f"🎵 {len(recs)} recomendaciones generadas.")
         return recs[cols]
