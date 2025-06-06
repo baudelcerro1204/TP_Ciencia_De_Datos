@@ -1,14 +1,15 @@
 # src/songrecommender/api/routers/data.py
-from fastapi import APIRouter, HTTPException
-from songrecommender.processors.data_processing import MillionSongDataProcessor
+from fastapi import APIRouter, HTTPException, File, UploadFile, Body
 from fastapi.responses import JSONResponse
-import pandas as pd
-from pathlib import Path
-import shutil
-from fastapi import File, UploadFile, Body
-from tempfile import NamedTemporaryFile
+from songrecommender.processors.data_processing import MillionSongDataProcessor
 from songrecommender.processors.audio_features import extract_features_from_mp3
 from songrecommender.processors.download_song_and_process import process_song_and_add_to_dataset
+from tempfile import NamedTemporaryFile
+from pathlib import Path
+import shutil
+import pandas as pd
+import requests
+from fastapi import Query
 
 router = APIRouter()
 
@@ -35,11 +36,10 @@ def enrich():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @router.get("/songs", summary="Obtener todas las canciones del dataset")
 def get_all_songs():
     try:
-        # Buscar el archivo como en SongRecommender
         project_root = Path(__file__).resolve().parents[4]
         processed_file = project_root / 'data' / 'processed' / 'million_song_combined.parquet'
 
@@ -52,25 +52,21 @@ def get_all_songs():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @router.post("/upload", summary="Subir MP3, extraer features y agregar al dataset")
 async def upload_and_extract(file: UploadFile = File(...)):
     try:
-        # Guardar el archivo temporalmente
         with NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
             shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
 
-        # Extraer features con Essentia
         print(f"🎧 Procesando archivo: {file.filename}")
         new_row = extract_features_from_mp3(tmp_path, original_filename=file.filename)
 
-        # Cargar dataset existente
         project_root = Path(__file__).resolve().parents[4]
         parquet_path = project_root / "data" / "processed" / "million_song_combined.parquet"
         df = pd.read_parquet(parquet_path)
 
-        # Agregar nueva fila al dataset
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_parquet(parquet_path, index=False)
 
@@ -78,7 +74,7 @@ async def upload_and_extract(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @router.post("/add_by_name", summary="Buscar canción por nombre y agregarla automáticamente")
 def add_song_by_name(name: str = Body(..., embed=True)):
     try:
@@ -89,3 +85,85 @@ def add_song_by_name(name: str = Body(..., embed=True)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+from fastapi import APIRouter, HTTPException, Query
+from pathlib import Path
+import pandas as pd
+import requests
+
+router = APIRouter()
+
+@router.get("/movie_from_name", summary="Buscar películas asociadas a una canción por nombre exacto")
+def movie_from_song_name(nombre: str = Query(..., description="Nombre exacto de la canción según dataset")):
+    try:
+        name_clean = nombre.strip().lower()
+
+        # Cargar dataset
+        project_root = Path(__file__).resolve().parents[4]
+        parquet_path = project_root / "data" / "processed" / "million_song_combined.parquet"
+        if not parquet_path.exists():
+            raise HTTPException(status_code=404, detail="Dataset no encontrado")
+
+        df = pd.read_parquet(parquet_path)
+        df["name_lower"] = df["name"].str.strip().str.lower()
+
+        match = df[df["name_lower"] == name_clean]
+        if match.empty:
+            raise HTTPException(status_code=404, detail="Canción no encontrada en el dataset")
+
+        song_name = match.iloc[0]["name"]
+
+        # Consultar iTunes
+        response = requests.get("https://itunes.apple.com/search", params={
+            "term": song_name,
+            "entity": "song",
+            "limit": 10
+        }, timeout=5)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Error al consultar iTunes Search API")
+
+        data = response.json()
+        results = data.get("results", [])
+        if not results:
+            return {"song": song_name, "movies": []}
+
+        # Buscar soundtracks con criterios más amplios
+        movies = set()
+        keywords = [
+            "motion picture",
+            "soundtrack",
+            "original soundtrack",
+            "ost",
+            "film",
+            "movie",
+            "series",
+            "tv",
+            "netflix",
+            "hbo",
+            "prime",
+            "original score",
+            "music from",
+            "cinema",
+            "disney",
+            "pixar",
+            "marvel",
+            "warner",
+            "dreamworks"
+        ]
+
+
+        for item in results:
+            col = item.get("collectionName", "").lower()
+            if any(keyword in col for keyword in keywords):
+                movies.add(item.get("collectionName", "").strip())
+
+        return {
+            "song": song_name,
+            "movies": list(movies)
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
