@@ -32,6 +32,18 @@ def process_song_and_add_to_dataset(song_name: str):
     mp3_path = download_youtube_audio(song_name)
     features = extract_features_from_mp3(str(mp3_path), original_filename=mp3_path.name)
 
+    # Forzar nombre y artista exactos si están incluidos en el query
+    if '-' in song_name:
+        title_part, artist_part = song_name.split('-', 1)
+        features["name"] = title_part.strip()
+        features["artist"] = artist_part.strip()
+
+
+    
+    # Asegurar que el campo genre no sea None
+    if not features.get("genre"):
+        features["genre"] = ""
+
     # Guardar en dataset
     project_root = Path(__file__).resolve().parents[3]
     parquet_path = project_root / "data" / "processed" / "million_song_combined.parquet"
