@@ -6,9 +6,9 @@ from songrecommender.processors.audio_features import extract_features_from_mp3
 from songrecommender.processors.download_song_and_process import process_song_and_add_to_dataset
 from tempfile import NamedTemporaryFile
 from pathlib import Path
-import shutil
 import pandas as pd
 import requests
+import shutil
 from fastapi import Query
 
 router = APIRouter()
@@ -86,12 +86,6 @@ def add_song_by_name(name: str = Body(..., embed=True)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-from fastapi import APIRouter, HTTPException, Query
-from pathlib import Path
-import pandas as pd
-import requests
-
-router = APIRouter()
 
 @router.get("/movie_from_name", summary="Buscar películas asociadas a una canción por nombre exacto")
 def movie_from_song_name(nombre: str = Query(..., description="Nombre exacto de la canción según dataset")):
