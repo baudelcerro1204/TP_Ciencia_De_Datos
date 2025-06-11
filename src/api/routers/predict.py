@@ -2,9 +2,7 @@
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from src.core.audio_processing import extract_features_from_file
-from src.core.spotify_service import predecir_popularidad
-#from pydantic import BaseModel
-#from src.core.spotify_service import SpotifyService
+from src.services.predict_service import predecir_popularidad
 import tempfile
 import shutil
 
@@ -25,15 +23,3 @@ def predict_from_audio(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error en el procesamiento: {str(e)}")
     
-
-#class TrackRequest(BaseModel):
- #   track_name: str
- #   artist_name: str
-
-#spotify_service = SpotifyService()
-
-#@router.post("/predict-by-name")
-#def predict_by_name(data: TrackRequest):
-#    return spotify_service.predict_popularity_from_spotify(
-#        data.track_name, data.artist_name
-#    )
