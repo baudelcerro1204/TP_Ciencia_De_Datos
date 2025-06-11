@@ -1,7 +1,8 @@
+# src/core/prediction_service.py
+
 import joblib
 import pandas as pd
 import os
-
 
 MODEL_PATH = "models/random_forest_popularity.pkl"
 SCALER_PATH = "models/zscore_scaler.pkl"
@@ -14,7 +15,7 @@ scaler = joblib.load(SCALER_PATH)
 
 def predecir_popularidad(features: dict):
     """
-    Recibe un diccionario de features extraídos por Essentia,
+    Recibe un diccionario de 4 features de Essentia,
     los escala y devuelve una predicción de popularidad (0-100).
     """
     df = pd.DataFrame([features])

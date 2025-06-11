@@ -1,5 +1,3 @@
-# src/api/routers/predict.py
-
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from src.core.audio_processing import extract_features_from_file
 from src.services.predict_service import predecir_popularidad
@@ -22,4 +20,3 @@ def predict_from_audio(file: UploadFile = File(...)):
         return predecir_popularidad(features)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error en el procesamiento: {str(e)}")
-    
