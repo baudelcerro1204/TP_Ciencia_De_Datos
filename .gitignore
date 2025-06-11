@@ -176,3 +176,7 @@ cython_debug/
 # No cargan los datasets 
 raw/
 processed/
+
+# No cargan los modelos
+models/
+

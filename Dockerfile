@@ -1,13 +1,13 @@
-FROM ubuntu:22.04
+FROM python:3.10-slim
 
-# Instalar dependencias del sistema, incluyendo eigen3
+# Evitar errores interactivos
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Crear carpeta de trabajo
+WORKDIR /app
+
+# Instalar dependencias del sistema
 RUN apt update && apt install -y \
-    build-essential \
-    python3 \
-    python3-pip \
-    python3-numpy \
-    git \
-    wget \
     ffmpeg \
     libfftw3-dev \
     libsamplerate0-dev \
@@ -20,32 +20,24 @@ RUN apt update && apt install -y \
     libeigen3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-
-RUN ln -s /usr/bin/python3 /usr/bin/python
-
-# Clonar e instalar Essentia
-RUN git clone https://github.com/MTG/essentia.git /essentia && \
-    cd /essentia && \
-    git submodule update --init --recursive && \
-    ./waf configure --with-python --with-examples && \
-    ./waf && \
-    ./waf install && \
-    ldconfig
-
-# Crear carpeta de trabajo
-WORKDIR /app
-
+# Copiar archivos
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+
+# Instalar Essentia desde PyPI alternativo oficial
+RUN pip install essentia --extra-index-url https://essentia.upf.edu/pypi
+
+# Opcional: otros paquetes adicionales
 RUN pip install yt-dlp
 
+# Copiar código fuente
 COPY . .
 
+# Variables de entorno
 ENV PYTHONPATH=/app/src
-
 ENV INSIDE_DOCKER=1
 
-CMD ["uvicorn", "songrecommender.server.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-
+# Ejecutar el servidor
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

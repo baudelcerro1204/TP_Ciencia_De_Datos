@@ -4,6 +4,12 @@ from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from typing import Dict, Any, Optional
+import pandas as pd
+import joblib
+
+# Cargar modelos
+rf_model = joblib.load("models/random_forest_popularity.pkl")
+scaler = joblib.load("models/zscore_scaler.pkl")
 
 # Cargar variables de entorno
 load_dotenv()
@@ -92,3 +98,31 @@ class SpotifyService:
         except Exception as e:
             logger.exception("❌ Error al obtener audio features")
             return None
+        
+
+    def predict_popularity_from_spotify(self, track_name: str, artist_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Predice la popularidad estimada de una canción a partir de su nombre y artista usando el modelo entrenado.
+        """
+        track = self.search_track(track_name, artist_name)
+        if not track:
+            return {"error": "No se encontró el track"}
+
+        features = self.get_track_features(track["id"])
+        if not features:
+            return {"error": "No se pudieron obtener los features de audio"}
+
+        # Filtrar solo las columnas que el modelo espera
+        required_features = ['danceability', 'energy', 'valence', 'tempo',
+                             'liveness', 'speechiness', 'acousticness', 'instrumentalness']
+        input_data = {k: features[k] for k in required_features}
+        df = pd.DataFrame([input_data])
+        X_scaled = scaler.transform(df)
+        pred = rf_model.predict(X_scaled)[0]
+
+        return {
+            "track_name": track["name"],
+            "artist": track["artists"][0]["name"],
+            "popularidad_predicha": round(pred, 2),
+            "features_normalizados": dict(zip(df.columns, X_scaled[0]))
+        }
