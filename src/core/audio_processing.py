@@ -67,3 +67,16 @@ def extract_features_from_name_and_artist(track_name: str, artist_name: str) -> 
     except subprocess.CalledProcessError as e:
         print(f"❌ Error al descargar o procesar el audio: {e}")
         raise RuntimeError("Falló la descarga o extracción de features.")
+    
+def normalize_features(raw_features: dict) -> dict:
+    """
+    Transforma los features extraídos por Essentia al mismo rango
+    que usó el dataset original para entrenar el modelo (0–100, etc.).
+    """
+    return {
+        "danceability": int(raw_features["danceability"] * 100),
+        "energy": int(min(max(raw_features["energy"] + 60, 0), 100)),  # escala dB (-60 a 0) → (0 a 100)
+        "valence": int(raw_features["valence"] * 100),
+        "tempo": raw_features["tempo"] / 250  # normalizás a aprox. 0–1 como en el dataset
+    }
+

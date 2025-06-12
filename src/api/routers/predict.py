@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from src.core.audio_processing import extract_features_from_file
+from src.core.audio_processing import extract_features_from_file, normalize_features
 from src.services.predict_service import predecir_popularidad
 import tempfile
 import shutil
@@ -17,6 +17,15 @@ def predict_from_audio(file: UploadFile = File(...)):
 
     try:
         features = extract_features_from_file(tmp_path)
+        normalized = normalize_features(features)
+        
+        # ✅ Imprimir features extraídos
+        print("🎛️ Features extraídos por Essentia:")
+        for key, value in normalized.items():
+            print(f"  {key}: {value}")
+
         return predecir_popularidad(features)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error en el procesamiento: {str(e)}")
+

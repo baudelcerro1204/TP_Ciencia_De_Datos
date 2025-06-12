@@ -10,8 +10,9 @@ RUN apt update && apt install -y \
     build-essential \
     python3 \
     python3-pip \
-    python3-numpy \
     python3-dev \
+    python3-venv \
+    python3-numpy \
     scons \
     pkg-config \
     ffmpeg \
@@ -26,7 +27,9 @@ RUN apt update && apt install -y \
     libtag1-dev \
     libchromaprint-tools \
     libeigen3-dev \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Asegurar symlink de python
 RUN ln -s /usr/bin/python3 /usr/bin/python
