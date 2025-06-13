@@ -4,12 +4,14 @@ import joblib
 import pandas as pd
 import os
 
-MODEL_PATH = "models/random_forest_model.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "../../models/random_forest_model.pkl")
 
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError("❌ No se encontró el modelo en 'models/'")
+    raise FileNotFoundError(f"❌ No se encontró el modelo en '{MODEL_PATH}'")
 
 rf_model = joblib.load(MODEL_PATH)
+
 
 def predecir_popularidad(features: dict):
     """
