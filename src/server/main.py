@@ -1,11 +1,6 @@
 from fastapi import FastAPI
-from src.api.routers import predict, audio_features
+from src.api.routers import cluster
 
 app = FastAPI()
 
-app.include_router(predict.router)
-app.include_router(audio_features.router)
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the FastAPI Audio Prediction App!"}
+app.include_router(cluster.router, prefix="/api")
