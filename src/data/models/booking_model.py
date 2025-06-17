@@ -36,3 +36,5 @@ class Reserva(Base):
     required_car_parking_spaces = Column(Integer)
     total_of_special_requests = Column(Integer)
     reservation_status_date = Column(String)
+    departure_date = Column(String)  # Nueva columna
+    guest_name = Column(String)  # Nueva columna

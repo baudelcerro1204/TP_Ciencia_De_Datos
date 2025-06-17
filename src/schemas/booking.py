@@ -31,6 +31,9 @@ class BookingInput(BaseModel):
     required_car_parking_spaces: int
     total_of_special_requests: int
     reservation_status_date: str
+    departure_date: str                      
+    guest_name: str                          
+
 
 class FeatureImpact(BaseModel):
     feature: str
