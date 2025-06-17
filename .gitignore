@@ -178,5 +178,5 @@ raw/
 processed/
 
 # No cargan los modelos
-models/
+model/
 
