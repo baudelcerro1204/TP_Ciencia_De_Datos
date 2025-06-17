@@ -7,7 +7,8 @@ def download_kaggle_dataset():
     api = KaggleApi()
     api.authenticate()
 
-    # Nombre del dataset a descargar
+
+    # Dataset a descargar
     dataset = "jessemostipak/hotel-booking-demand"
 
     # Ruta destino

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
+from src.api.routers import cluster
 from src.api.routers import predict
+
 
 app = FastAPI(
     title="Hotel Booking Cancellation Predictor",
@@ -7,4 +9,5 @@ app = FastAPI(
     version="1.0"
 )
 
+app.include_router(cluster.router, prefix="/api")
 app.include_router(predict.router, prefix="/api")
