@@ -83,7 +83,7 @@ def evaluar_reserva(reserva_id: str):
         cluster_nombre = cluster_map.get(cluster, "Desconocido")
 
         return {
-            "prediccion": "Cancelada" if pred == 1 else "No cancelada",
+            "prediccion": "Alta probabilidad de cancelación" if pred == 1 else "Baja probabilidad de cancelación",
             "probabilidad_cancelacion": round(proba, 4),
             "cluster": cluster,
             "cluster_nombre": cluster_nombre,
