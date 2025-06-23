@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import logging
-import shap
 from shap import TreeExplainer
 from src.services.booking_service import obtener_reserva
 
@@ -16,25 +15,29 @@ feature_names = preprocessor.get_feature_names_out()
 # SHAP Explainer específico para árboles
 explainer = TreeExplainer(classifier)
 
-# Modelo de cluster
-kmeans = joblib.load("src/model/modelo_clusters_kmeans.pkl")
+# Modelo de cluster (KMeans entrenado con k=2)
+kmeans = joblib.load("src/model/kmeans_model.pkl")
+
+# Escalador usado para clustering (coincide con el entrenamiento)
+scaler = joblib.load("src/model/scaler.pkl")
+
 cluster_map = {
-    0: "Reservas anticipadas de adultos",
-    1: "Viajes familiares con planificación media",
-    2: "Reservas especiales y confiables"
+    0: "Reservas familiares premium",        # children ≈ 1.3, adr alto
+    1: "Reservas estándar anticipadas"       # sin hijos, adr bajo, lead_time alto
 }
+
 
 # Probabilidad histórica de cancelación por cluster
 proba_cancelacion_por_cluster = {
-    0: 0.37,
-    1: 0.37,
-    2: 0.18
+    0: 0.45,
+    1: 0.20
 }
 
 # Escalador usado para clustering
 scaler = StandardScaler()
 scaler.mean_ = np.array([105.6, 3.5, 1.9, 0.5, 0.1, 0.05, 0.2, 125])
 scaler.scale_ = np.array([30, 1.0, 0.5, 0.8, 0.3, 0.2, 0.6, 40])
+
 
 def evaluar_reserva(reserva_id: str):
     try:
@@ -50,7 +53,7 @@ def evaluar_reserva(reserva_id: str):
         df = pd.DataFrame([data])
         df.drop(columns=[c for c in ["reservation_status_date", "id"] if c in df.columns], inplace=True)
 
-        # Predicción
+        # Predicción con modelo de cancelación
         pred = model.predict(df)[0]
         proba = model.predict_proba(df)[0][1]
 
@@ -61,12 +64,7 @@ def evaluar_reserva(reserva_id: str):
 
         shap_values = explainer.shap_values(X_trans)
 
-        # Soporte para modelos con 1 o más clases
-        if isinstance(shap_values, list) and len(shap_values) > 1:
-            shap_class_values = shap_values[1]
-        else:
-            shap_class_values = shap_values[0]
-
+        shap_class_values = shap_values[1] if isinstance(shap_values, list) and len(shap_values) > 1 else shap_values[0]
         contributions = sorted(
             zip(feature_names, shap_class_values[0]),
             key=lambda x: abs(x[1]),
